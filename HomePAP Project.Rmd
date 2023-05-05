@@ -1,0 +1,217 @@
+---
+title: "HomePAP data wrangling"
+author: "Chrissy Radloff"
+date: "2023-03-27"
+output: html_document
+---
+```{r}
+library(readr)
+library(tidyverse)
+library(skimr)
+library(ggplot2)
+
+#Baseline data frame
+
+homepap_baseline_dataset_0_1_0 <- read_csv("~/Desktop/Home CPAP/homepap-baseline-dataset-0.1.0.csv") #373 observations
+baseline<- homepap_baseline_dataset_0_1_0 %>%
+   dplyr:: select(nsrrid, age, gender, race3, ethnicity, neckcm, bmi, systolic, diastolic, dxdiab, dxhtn, dxdep, dxemph, ahi,
+         cal_total, ahi_full, fosq_global) #373
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Names of all columns in month1 dataset
+homepap_month1_dataset_0_1_0 <- read_csv("~/Desktop/Home CPAP/homepap-month1-dataset-0.1.0.csv")
+month1<-homepap_month1_dataset_0_1_0
+a<-list(month1)
+a
+##Not available: "ahi", "slpprdp", "avgsao2"
+```
+
+```{r}
+#Names of all columns in month3 dataset
+homepap_month3_dataset_0_1_0 <- read_csv("~/Desktop/Home CPAP/homepap-month3-dataset-0.1.0.csv")
+threemonth<-homepap_month3_dataset_0_1_0
+b<-list(threemonth)
+b
+##Not available: "ahi", "slpprdp", "avgsao2"
+```
+
+
+
+```{r}
+#One month data frame with available variables from the data set
+onemonth<-homepap_month1_dataset_0_1_0 %>%
+ dplyr:: select("nsrrid", "systolic","diastolic", "cal_total",  "fosq_global", "avgpapuse")
+
+#change column names to differentiate between datasets
+colnames(onemonth)
+colnames(onemonth)<- c("nsrrid", "systolic.1",
+"diastolic.1", "cal_total.1",  "fosq_global.1", "avgpapuse.1")
+
+#Three month data frame
+threemonth_df<-homepap_month3_dataset_0_1_0 %>%
+  dplyr:: select("nsrrid", "bmi" , "systolic", "diastolic", "cal_total", "fosq_global", "avgpapuse") #373
+  
+threemonth<- threemonth_df %>%
+filter(!is.na(fosq_global)) #142
+
+
+#Change column names to differentiate between datasets
+colnames(threemonth)
+colnames(threemonth)<- c("nsrrid", "bmi.3" , "systolic.3", "diastolic.3", "cal_total.3", "fosq_global.3", "avgpapuse.3")
+
+#Merge datasets
+merged<-merge(baseline, onemonth, by.x = "nsrrid", by.y = "nsrrid")
+merged<-merge(merged, threemonth, by.x = "nsrrid", by.y = "nsrrid") #142
+
+library(readr)
+# Write to CSV file
+write_csv(merged, "homepap_merged dataset.csv")
+
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+
+```{r}
+#descriptive statistics for numeric variables
+plaus_var<-merged %>%
+   dplyr::select(neckcm, age, systolic, diastolic, bmi, systolic.1, diastolic.1, avgpapuse.1, systolic.3, diastolic.3, avgpapuse.3)
+
+plaus<- skim(plaus_var) 
+plaus
+```
+```{r}
+library(epiDisplay)
+
+cleaned <- read_csv("~/Desktop/Home CPAP/homepap_cleaned.csv") 
+
+#Descriptive statistics for categorical variables of cleaned dataset: Gender
+
+cleaned$gender[cleaned$gender == 0] <- "female"
+cleaned$gender[cleaned$gender == 1] <- "male"
+
+
+tab1(cleaned$gender, sort.group = "decreasing", cum.percent = TRUE, main = "Distribution of gender")
+```
+```{r}
+#Descriptive statistics for categorical variables of cleaned dataset: Race
+
+cleaned$race3[cleaned$race3 == 1] <- "White"
+cleaned$race3[cleaned$race3 == 2] <- "Black"
+cleaned$race3[cleaned$race3 == 3] <- "Other"
+
+tab1(cleaned$race3, sort.group = "decreasing", cum.percent = TRUE, main = "Distribution of race")
+```
+```{r}
+
+#Descriptive statistics for categorical variables of cleaned dataset: Ethnicity
+
+cleaned$ethnicity[cleaned$ethnicity == 1] <- "Hispanic or Latino"
+cleaned$ethnicity[cleaned$ethnicity == 2] <- "Not Hispanic or Latino"
+
+
+tab1(cleaned$ethnicity, sort.group = "decreasing", cum.percent = TRUE, main = "Distribution of ethnicity")
+```
+```{r}
+#Descriptive statistics for categorical variables of cleaned dataset: Diabetes diagnosis
+
+cleaned$dxdiab[cleaned$dxdiab == 0] <- "No Diabetes"
+cleaned$dxdiab[cleaned$dxdiab == 1] <- "Diabetes"
+cleaned$dxdiab[cleaned$dxdiab == is.na(cleaned$dxdiab)] <- "Unknown"
+
+#char_var<-cleaned %>%
+  #select(gender, race3, ethnicity, dxdiab, dxhtn, dxdep, dxemph)
+
+tab1(cleaned$dxdiab, sort.group = "decreasing", cum.percent = TRUE, main = "Distribution of diabetes diagnosis")
+```
+```{r}
+##Descriptive statistics for categorical variables of cleaned dataset: hypertension diagnosis
+
+cleaned$dxhtn[cleaned$dxhtn == 0] <- "No Hypertension"
+cleaned$dxhtn[cleaned$dxhtn == 1] <- "Hypertension"
+cleaned$dxhtn[cleaned$dxhtn == is.na(cleaned$dxhtn)] <- "Unknown"
+
+#char_var<-cleaned %>%
+  #select(gender, race3, ethnicity, dxdiab, dxhtn, dxdep, dxemph)
+
+tab1(cleaned$dxhtn, sort.group = "decreasing", cum.percent = TRUE, main = "Distribution of hypertension diagnosis")
+```
+```{r}
+#Descriptive statistics for categorical variables of cleaned dataset: Depression diagnosis
+
+cleaned$dxdep[cleaned$dxdep == 0] <- "No Depression"
+cleaned$dxdep[cleaned$dxdep == 1] <- "Depression"
+cleaned$dxdep[cleaned$dxdep == is.na(cleaned$dxdep)] <- "Unknown"
+
+#char_var<-cleaned %>%
+  #select(gender, race3, ethnicity, dxdiab, dxhtn, dxdep, dxemph)
+
+tab1(cleaned$dxdep, sort.group = "decreasing", cum.percent = TRUE, main = "Distribution of depression diagnosis")
+```
+```{r}
+#Descriptive statistics for categorical variables of cleaned dataset: Emphysema diagnosis
+
+cleaned$dxemph[cleaned$dxemph == 0] <- "No Emphysema"
+cleaned$dxemph[cleaned$dxemph == 1] <- "Emphysema"
+cleaned$dxemph[cleaned$dxemph == is.na(cleaned$dxemph)] <- "Unknown"
+
+
+tab1(cleaned$dxemph, sort.group = "decreasing", cum.percent = TRUE, main = "Distribution of emphysema diagnosis")
+```
+
+
+```{r}
+#Are any of the diasolic bp greater than systolic bp in the baseline dataset?
+
+bp<-merged %>%
+  select(systolic, diastolic)
+  
+bpb<- subset(bp, systolic< diastolic)
+bpb
+```
+```{r}
+#Are any of the diasolic bp greater than systolic bp in the month 1 dataset?
+bp1<-merged %>%
+  select(systolic.1, diastolic.1)
+  
+bp1<- subset(bp1, systolic.1< diastolic.1)
+bp1
+```
+
+```{r}
+
+#Are any of the diasolic bp greater than systolic bp in the month 3 dataset?
+bp3<-merged %>%
+  select(systolic.3, diastolic.3)
+  
+bp3<- subset(bp3, systolic.3 < diastolic.3)
+bp3
+```
+
+```{r}
+#One Month data frame
+
+merged_sk<-skim(merged)
+
+h<-ggplot(data = merged_sk, aes(x= reorder(skim_variable, +complete_rate),  y = complete_rate)) +
+  geom_bar(stat = "identity")  +
+  coord_flip() +
+  ggtitle("Completeness rates of required data variables in One month data") + 
+  xlab("Completeness rate") + 
+  ylab("Variables")
+h
+```
+
